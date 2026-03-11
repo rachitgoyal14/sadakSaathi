@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from app.api.routing import router
-from app.api import reports, hazards
+from app.api import reports, hazards, location
 
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -17,5 +17,6 @@ app.add_middleware(
 app.include_router(router)
 app.include_router(reports.router)
 app.include_router(hazards.router)
+app.include_router(location.router)
 
 # Optionally: Uvicorn can be configured via Docker
