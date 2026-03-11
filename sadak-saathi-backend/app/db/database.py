@@ -7,18 +7,22 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-# Database setup
-NEONDB_URL = os.getenv("NEONDB_URL")
-if NEONDB_URL:
-    # Use NeonDB URL directly (include sslmode/channel_binding if present)
-    DATABASE_URL = f"postgresql+psycopg2://{NEONDB_URL.split('://')[1]}"
+# Database setup (Prod/Dev/Test isolation!)
+TEST_DATABASE_URL = os.getenv("TEST_DATABASE_URL")
+if TEST_DATABASE_URL:
+    DATABASE_URL = TEST_DATABASE_URL
 else:
-    POSTGRES_USER = os.getenv("POSTGRES_USER", "sadak_saathi")
-    POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
-    POSTGRES_DB = os.getenv("POSTGRES_DB", "sadak_saathi")
-    POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
-    POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
-    DATABASE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"
+    NEONDB_URL = os.getenv("NEONDB_URL")
+    if NEONDB_URL:
+        # Use NeonDB URL directly (include sslmode/channel_binding if present)
+        DATABASE_URL = f"postgresql+psycopg2://{NEONDB_URL.split('://')[1]}"
+    else:
+        POSTGRES_USER = os.getenv("POSTGRES_USER", "sadak_saathi")
+        POSTGRES_PASSWORD = os.getenv("POSTGRES_PASSWORD", "password")
+        POSTGRES_DB = os.getenv("POSTGRES_DB", "sadak_saathi")
+        POSTGRES_HOST = os.getenv("POSTGRES_HOST", "db")
+        POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")
+        DATABASE_URL = f"postgresql+psycopg2://{POSTGRES_USER}:{POSTGRES_PASSWORD}@{POSTGRES_HOST}:{POSTGRES_PORT}/{POSTGRES_DB}"  
 
 engine = create_engine(DATABASE_URL, echo=True)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
