@@ -57,8 +57,41 @@ Defaults are set for Redis in `docker-compose.yml`, but can be overridden with `
 - `requirements.txt` : Python dependencies
 - `docker-compose.yml` : Container definitions
 
+## Database Migrations
+
+### Spatial Index Migration
+
+To ensure fast geospatial queries, you **must** add spatial indexes on the `location` fields:
+
+**How to run the migration:**
+
+```
+cd app/db
+python migrate_spatial_index.py
+```
+
+This will add (if missing) spatial indexes on both `hazards.location` and `hazard_reports.location`.
+
+---
+
 ## Next Steps
 - Implement more endpoints and services in app/api and app/services
 - Add DB models in app/models
 
 ---
+
+## Security: NeonDB Credential Rotation
+
+**It is critical to rotate your NeonDB credentials periodically and IMMEDIATELY if any secrets are ever exposed.**
+
+**How to rotate your NeonDB DB credentials:**
+1. Log in to your [Neon Console](https://console.neon.tech/).
+2. Select your project/database.
+3. Navigate to the 'Settings' or 'Connection' tab.
+4. Rotate (change/reset) your DB password/user, copy the new `postgresql://` connection string.
+5. Update your new secret in your deployment host/CI/.env (never commit the secret itself).
+6. Redeploy/restart the backend services (locally and in production) with the new secret.
+7. Remove any previously-leaked secrets from all possible locations and invalidate them.
+
+**NEVER commit DB credentials, even to private repos. Use environment variables via `.env` or CI secret stores.**
+
