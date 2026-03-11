@@ -38,7 +38,7 @@ To use NeonDB for your backend database, set the environment variable `NEONDB_UR
 
 Example `.env` entry:
 ```
-NEONDB_URL='postgresql://neondb_owner:***REMOVED***@ep-autumn-cherry-a18ij12x-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
+NEONDB_URL='postgresql://<YOUR_USER>:<YOUR_PASSWORD>@ep-autumn-cherry-a18ij12x-pooler.ap-southeast-1.aws.neon.tech/neondb?sslmode=require&channel_binding=require'
 ```
 
 If `NEONDB_URL` is set, the backend will use it automatically. Otherwise, local PostGIS settings from docker-compose or individual environment variables are used.
