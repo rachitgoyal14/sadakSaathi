@@ -1,10 +1,10 @@
-# 🛵 Sadak Saathi
+# Sadak Saathi
 
 **Delhi's Two-Wheeler Safety & Road Accountability Network**
 
 ---
 
-## � App Screenshots
+## App Screenshots
 
 <p align="center">
   <img src="screenshots/map-screen.png" width="200" alt="Community Map" />
@@ -15,7 +15,7 @@
 
 ---
 
-## �📊 The Problem
+## The Problem
 
 | Impact | Numbers |
 |--------|---------|
@@ -27,7 +27,7 @@ Every rupee is traceable. Every pothole has a contractor responsible.
 
 ---
 
-## 💡 The Solution
+## The Solution
 
 **Sadak Saathi turns 3 lakh delivery riders into a passive road-intelligence network.**
 
@@ -39,7 +39,7 @@ Delhi has **3 lakh delivery riders** covering every road multiple times daily. T
 
 ---
 
-## ✨ Features
+## Features
 
 ### Dual Detection System
 
@@ -71,7 +71,7 @@ Every pothole links to contractor + economic damage calculation.
 
 ---
 
-## 🔬 How It Works
+## How It Works
 
 ### Detection Pipeline
 
@@ -125,7 +125,7 @@ Every pothole links to contractor + economic damage calculation.
 
 ---
 
-## 🎯 Why This Works
+## Why This Works
 
 **Passive Intelligence Network**
 - 3 lakh delivery riders = 18-30 crore km covered daily
@@ -147,49 +147,87 @@ Every pothole links to contractor + economic damage calculation.
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
-```
-Mobile App (React Native + Expo)
-    ↓
-On-Device ML (LSTM + YOLO)
-    ↓
-FastAPI Backend
-    ↓
-PostgreSQL + PostGIS + Redis
-    ↓
-Accountability Engine
+```mermaid
+graph TD
+    subgraph Mobile[Mobile Application]
+        RN[React Native App]
+        LSTM[LSTM Model]
+        YOLO[YOLOv8-nano]
+    end
+    
+    subgraph Backend[Backend Services]
+        API[FastAPI Server]
+        Engine[Accountability Engine]
+    end
+    
+    subgraph Data[Data Layer]
+        PG[(PostgreSQL + PostGIS)]
+        Redis[(Redis Cache)]
+    end
+    
+    RN -->|Motion Data| LSTM
+    RN -->|Camera Feed| YOLO
+    LSTM -->|Impact Events| API
+    YOLO -->|Visual Detections| API
+    API -->|Read/Write| PG
+    API -->|Cache Hot Data| Redis
+    PG -->|Contract Data| Engine
 ```
 
 ### Data Flow
 
-**Detection:**
-```
-Sensor data (50Hz) → LSTM → S1/S2/S3 classification → Backend → 
-3+ reports within 5m → Confirmed hazard → Public map
+**Detection & Confirmation:**
+```mermaid
+sequenceDiagram
+    participant S as Sensors(50Hz)
+    participant L as LSTM Model
+    participant B as Backend
+    participant D as Database
+    
+    S->>L: Stream Accelerometer Data
+    L->>B: Impact Detected (S1/S2/S3)
+    B->>D: Store Report
+    D->>B: Check Nearby Reports (5m)
+    
+    alt >3 Reports
+        B->>D: Mark as Confirmed
+        B->>B: Trigger Public Map Update
+    end
 ```
 
-**YOLO:**
-```
-Camera frame → YOLOv8-nano → Bounding box + class + confidence → 
-Water-filled >91% → Immediate alert
-```
-
-**Routing:**
-```
-Origin + Destination → Query hazards + traffic + weather → 
-Score each route → Return Fastest vs Safe
+**YOLO Camera Detection:**
+```mermaid
+graph LR
+    Cam[Camera Frame] --> YOLO[YOLOv8-nano]
+    YOLO --> Detect[Bounding Box + Class]
+    Detect --> Check{Water Filled > 91%?}
+    Check -->|Yes| Alert[Immediate Alert]
+    Check -->|No| Log[Log Observation]
 ```
 
-**Accountability:**
+**Routing Logic:**
+```mermaid
+graph LR
+    User[Origin + Dest] --> Query[Query Hazards + Traffic]
+    Query --> Score[Score Routes]
+    Score --> Result[Fastest vs Safe Route]
 ```
-Confirmed hazard → Match to contractor via road segment → 
-Check warranty period → Calculate economic damage → Public dashboard
+
+**Accountability Engine:**
+```mermaid
+graph TD
+    Hazard[Confirmed Hazard] --> Match[Match Contractor via GIS]
+    Match --> Warranty{In Warranty Period?}
+    Warranty -->|Yes| Calc[Calculate Economic Damage]
+    Calc --> Dashboard[Public Dashboard]
+    Dashboard --> Share[Generate Share Link]
 ```
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 **Mobile:** React Native 0.83 • Expo 55 • TypeScript  
 **ML Models:** TensorFlow Lite (LSTM) • YOLOv8-nano  
@@ -199,7 +237,7 @@ Check warranty period → Calculate economic damage → Public dashboard
 
 ---
 
-## 🚀 Setup & Installation
+## Setup & Installation
 
 ### Prerequisites
 
@@ -261,7 +299,7 @@ npx expo start
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 SadakSaathi/
@@ -317,7 +355,7 @@ SadakSaathi/
 
 ---
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Hazards
 
@@ -364,7 +402,7 @@ Response: Multiple route options with safety scores
 
 ---
 
-## 🤖 ML Models
+## ML Models
 
 ### LSTM Accelerometer Model
 
@@ -409,7 +447,7 @@ Response: Multiple route options with safety scores
 
 ---
 
-## 🧪 Testing
+## Testing
 
 **Run Backend Tests:**
 ```bash
@@ -437,7 +475,7 @@ npm test
 
 ---
 
-## 📊 Performance Metrics
+## Performance Metrics
 
 ### System Performance
 - API latency: <100ms (p95)
@@ -459,7 +497,7 @@ npm test
 
 ---
 
-## 🎯 Key Features Explained
+## Key Features Explained
 
 ### Why Delivery Riders?
 
@@ -514,7 +552,7 @@ npm test
 
 ---
 
-## 🌟 Why This Approach Works
+## Why This Approach Works
 
 **Passive Intelligence:**
 - Riders deliver food → potholes get mapped (side effect)
