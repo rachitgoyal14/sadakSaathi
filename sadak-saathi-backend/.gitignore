@@ -19,3 +19,6 @@ __pycache__/
 # OS files
 .DS_Store
 Thumbs.db
+
+# divy13ansh_files
+opencode_session.txt
