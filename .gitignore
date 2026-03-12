@@ -1,0 +1,6 @@
+.vscode
+venv/
+opencode_session.txt
+__pycache__/
+*.pyc
+.pytest_cache/
