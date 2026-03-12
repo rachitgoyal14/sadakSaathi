@@ -7,9 +7,9 @@
 ## App Screenshots
 
 <p align="center">
+  <img src="screenshots/home-page.png" width="200" alt="home-page" />
   <img src="screenshots/map-screen.png" width="200" alt="Community Map" />
-  <img src="screenshots/route-selection.png" width="200" alt="Safe Route Navigation" />
-  <img src="screenshots/hazard-detail.png" width="200" alt="Pothole Detail & Accountability" />
+  <img src="screenshots/hazard-detail.png" width="200" alt="Hazard list" />
   <img src="screenshots/camera-detection.png" width="200" alt="YOLO Camera Detection" />
 </p>
 
