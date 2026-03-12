@@ -4,14 +4,43 @@
 
 ---
 
+## Project Pitch Video
+
+[![Sadak Saathi Pitch](https://img.youtube.com/vi/gzIxVzgfq6c/0.jpg)](https://youtu.be/gzIxVzgfq6c)
+
+*Click to watch the full project presentation*
+
+---
+
 ## App Screenshots
 
+### Home Page
 <p align="center">
-  <img src="screenshots/home-page.png" width="200" alt="home-page" />
-  <img src="screenshots/map-screen.png" width="200" alt="Community Map" />
-  <img src="screenshots/hazard-detail.png" width="200" alt="Hazard list" />
-  <img src="screenshots/camera-detection.png" width="200" alt="YOLO Camera Detection" />
+  <img src="screenshots/home-page.png" width="300" alt="home-page" />
 </p>
+
+*Dashboard overview with quick stats and access to main features*
+
+### Community Map
+<p align="center">
+  <img src="screenshots/map-screen.png" width="300" alt="Community Map" />
+</p>
+
+*Live map showing confirmed hazards and safe routes*
+
+### Hazard Detail
+<p align="center">
+  <img src="screenshots/hazard-detail.png" width="300" alt="Hazard list" />
+</p>
+
+*Detailed view of a pothole, including contractor info and economic damage*
+
+### YOLO Camera Detection
+<p align="center">
+  <img src="screenshots/camera-detection.png" width="300" alt="YOLO Camera Detection" />
+</p>
+
+*Real-time camera detection of potholes using YOLOv8-nano*
 
 ---
 
