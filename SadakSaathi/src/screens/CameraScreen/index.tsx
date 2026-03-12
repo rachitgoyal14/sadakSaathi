@@ -82,7 +82,7 @@ export default function CameraScreen() {
   if (!permission.granted) {
     return (
       <View style={styles.root}>
-        <View style={styles.header}><Text style={styles.title}>OVERSHOOT CAMERA</Text></View>
+        <View style={styles.header}><Text style={styles.title}>YOLO Detection CAMERA</Text></View>
         <DemoModeBanner />
         <View style={styles.permBox}>
           <Text style={styles.permIcon}>◎</Text>
@@ -98,7 +98,7 @@ export default function CameraScreen() {
   return (
     <View style={styles.root}>
       <View style={styles.header}>
-        <Text style={styles.title}>OVERSHOOT CAMERA</Text>
+        <Text style={styles.title}>YOLO Detection CAMERA</Text>
         <View style={[styles.statusPill, cameraActive && styles.statusPillActive]}>
           <Text style={styles.statusPillText}>{cameraActive ? '● SCANNING' : '○ IDLE'}</Text>
         </View>
@@ -207,8 +207,8 @@ export default function CameraScreen() {
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
           {isDemoMode
-            ? 'DEMO MODE — Fake YOLO detections cycling in real-time'
-            : 'LIVE MODE — Overshoot API analyzing frames every 500ms'}
+            ? 'DEMO MODE — YOLO detections cycling in real-time'
+            : 'LIVE MODE — YOLO detections cycling every 500ms'}
         </Text>
       </View>
     </View>
