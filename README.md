@@ -6,13 +6,12 @@
 
 ## Project Pitch Video
 
-<div align="center">
+<div align="left">
   <a href="https://www.youtube.com/watch?v=gzIxVzgfq6c">
-    <img src="https://img.youtube.com/vi/gzIxVzgfq6c/maxresdefault.jpg" alt="Sadak Saathi Pitch" style="width:100%;max-width:800px;">
+    <img src="https://img.youtube.com/vi/gzIxVzgfq6c/maxresdefault.jpg" alt="Sadak Saathi Pitch" style="width:70%;max-width:300px;">
   </a>
 </div>
 
----
 
 ## App Screenshots
 
@@ -50,7 +49,7 @@
 
 | Impact | Numbers |
 |--------|---------|
-| Two-wheeler deaths (potholes, 5 years) | **9438 deaths across India** |
+| Two-wheeler deaths (potholes, 5 years) | **9,438 deaths across India** |
 | Annual vehicle damage | **₹3,000 Cr** |
 | Annual traffic delay cost | **₹450 Cr** |
 
