@@ -50,7 +50,7 @@
 
 | Impact | Numbers |
 |--------|---------|
-| Two-wheeler deaths (potholes, 5 years) | **9438 deaths in India** |
+| Two-wheeler deaths (potholes, 5 years) | **9438 deaths across India** |
 | Annual vehicle damage | **₹3,000 Cr** |
 | Annual traffic delay cost | **₹450 Cr** |
 
@@ -329,52 +329,6 @@ SadakSaathi/
 
 ---
 
-## API Endpoints
-
-### Hazards
-
-**GET** `/api/hazards` - Get all confirmed hazards  
-**GET** `/api/hazards/{id}` - Get hazard details  
-**GET** `/api/hazards/nearby` - Get hazards within radius  
-Query params: `lat`, `lon`, `radius` (meters)
-
-### Reports
-
-**POST** `/api/reports` - Submit new pothole report  
-Body:
-```json
-{
-  "latitude": 28.6139,
-  "longitude": 77.2090,
-  "severity": 2,
-  "detection_method": "accelerometer",
-  "impact_force": 8.5,
-  "speed": 35.2
-}
-```
-
-**GET** `/api/reports/{hazard_id}` - Get all reports for a hazard
-
-### Location Alerts
-
-**GET** `/api/location/alerts` - Get hazards along current route  
-Query params: `lat`, `lon`, `heading`, `speed`
-
-### Routing
-
-**POST** `/api/routing/calculate` - Calculate safe routes  
-Body:
-```json
-{
-  "origin": {"lat": 28.7041, "lon": 77.1025},
-  "destination": {"lat": 28.5355, "lon": 77.3910},
-  "avoid_severity": 3
-}
-```
-
-Response: Multiple route options with safety scores
-
----
 
 ## ML Models
 
@@ -421,33 +375,6 @@ Response: Multiple route options with safety scores
 
 ---
 
-## Testing
-
-**Run Backend Tests:**
-```bash
-cd sadak-saathi-backend
-pytest tests/ -v
-
-# With coverage
-pytest tests/ --cov=app --cov-report=html
-```
-
-**Test Coverage:**
-- Hazard CRUD operations
-- Report submission & validation
-- Spatial clustering algorithm
-- Confirmation engine (3+ reports)
-- Sensor fusion (YOLO + accelerometer)
-- API security & rate limiting
-- Location-based alerts
-
-**Run Mobile Tests:**
-```bash
-cd SadakSaathi
-npm test
-```
-
----
 
 ## Performance Metrics
 
