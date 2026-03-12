@@ -242,68 +242,6 @@ graph TD
 
 ---
 
-## Setup & Installation
-
-### Prerequisites
-
-- Python 3.11+
-- Node.js 18+
-- Docker & Docker Compose
-- Expo Go app (for mobile testing)
-
-### Backend Setup
-
-```bash
-cd sadak-saathi-backend
-
-# Create virtual environment
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Setup environment
-cp .env.example .env
-# Edit .env with your credentials
-
-# Start database services
-docker-compose up -d
-
-# Run migrations
-alembic upgrade head
-
-# Start backend server
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-
-Backend will run at `http://localhost:8000`  
-API docs at `http://localhost:8000/docs`
-
-### Mobile App Setup
-
-```bash
-cd SadakSaathi
-
-# Install dependencies
-npm install
-
-# Setup environment
-cp .env.example .env
-# Edit .env:
-# - BACKEND_URL: http://YOUR_LOCAL_IP:8000 (use your machine's IP, not localhost)
-# - GOOGLE_MAPS_API_KEY: your API key
-
-# Start Expo
-npx expo start
-
-# Scan QR code with Expo Go app
-```
-
-**Important:** Use your machine's local IP address (e.g., `192.168.1.100:8000`) in the mobile `.env` file, not `localhost`, so your phone can reach the backend.
-
----
-
 ## Project Structure
 
 ```
@@ -575,3 +513,66 @@ npm test
 - Links damage to specific contractor (not generic PWD)
 - Satellite fraud detection makes lying costly
 - Public share-ability creates pressure beyond official channels
+
+---
+
+## Setup & Installation
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+
+- Docker & Docker Compose
+- Expo Go app (for mobile testing)
+
+### Backend Setup
+
+```bash
+cd sadak-saathi-backend
+
+# Create virtual environment
+python3 -m venv .venv
+source .venv/bin/activate  # Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Setup environment
+cp .env.example .env
+# Edit .env with your credentials
+
+# Start database services
+docker-compose up -d
+
+# Run migrations
+alembic upgrade head
+
+# Start backend server
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Backend will run at `http://localhost:8000`  
+API docs at `http://localhost:8000/docs`
+
+### Mobile App Setup
+
+```bash
+cd SadakSaathi
+
+# Install dependencies
+npm install
+
+# Setup environment
+cp .env.example .env
+# Edit .env:
+# - BACKEND_URL: http://YOUR_LOCAL_IP:8000 (use your machine's IP, not localhost)
+# - GOOGLE_MAPS_API_KEY: your API key
+
+# Start Expo
+npx expo start
+
+# Scan QR code with Expo Go app
+```
+
+**Important:** Use your machine's local IP address (e.g., `192.168.1.100:8000`) in the mobile `.env` file, not `localhost`, so your phone can reach the backend.
+
