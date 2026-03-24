@@ -48,17 +48,20 @@ class PotholeReport(Base):
     __tablename__ = "pothole_reports"
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    pothole_id = Column(String, ForeignKey("potholes.id"), nullable=True)  # null until clustered
+    pothole_id = Column(String, ForeignKey("potholes.id"), nullable=True)
     rider_id = Column(String, ForeignKey("riders.id"), nullable=False)
 
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
     severity = Column(Enum(Severity))
-    detection_method = Column(String)   # "camera", "sensor", "both"
+    detection_method = Column(String)
     confidence = Column(Float)
     image_s3_key = Column(String, nullable=True)
+    pothole_type = Column(String, default="dry")
+    yolo_bbox = Column(String, nullable=True)
+    rider_weight = Column(Float, default=1.0)
+    speed_kmh = Column(Float, nullable=True)
 
-    # Raw sensor data (stored for ML retraining)
     accel_x = Column(Float, nullable=True)
     accel_y = Column(Float, nullable=True)
     accel_z = Column(Float, nullable=True)

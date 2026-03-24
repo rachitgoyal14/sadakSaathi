@@ -1,7 +1,8 @@
 """
 Detection Router
-POST /api/v1/detect/report   — submit a pothole detection (sensor + optional image)
-POST /api/v1/detect/batch    — batch submit multiple sensor readings
+POST /api/v1/detect/yolo    — direct YOLO inference on uploaded image
+POST /api/v1/detect/report  — submit a pothole detection (sensor + optional image)
+POST /api/v1/detect/batch   — batch submit multiple sensor readings
 GET  /api/v1/detect/status/{pothole_id} — check pothole confirmation status
 """
 
@@ -25,22 +26,43 @@ router = APIRouter(prefix="/detect", tags=["detection"])
 settings = get_settings()
 
 
+@router.post("/yolo", response_model=dict, status_code=200)
+async def yolo_detect(
+    image: UploadFile = File(..., description="Upload an image for YOLO pothole detection. Supported formats: JPEG, PNG, JPG"),
+):
+    """
+    Direct YOLO inference endpoint.
+    Upload an image file and get instant pothole detection results.
+    Returns bounding box, confidence score, severity, and water detection.
+    """
+    if not image.content_type or not image.content_type.startswith("image/"):
+        raise HTTPException(status_code=400, detail="File must be an image (JPEG, PNG, or JPG)")
+
+    image_bytes = await image.read()
+    yolo_result = await run_yolo_inference(image_bytes)
+
+    return {
+        "detected": yolo_result.detected,
+        "confidence": yolo_result.confidence,
+        "severity": yolo_result.severity,
+        "water_filled": yolo_result.water_filled,
+        "bbox": yolo_result.bbox,
+    }
+
+
 @router.post("/report", response_model=DetectionResponse, status_code=202)
 async def submit_detection(
     background_tasks: BackgroundTasks,
-    # Core fields as form data (supports multipart with image)
     rider_id: str = Form(...),
     latitude: float = Form(...),
     longitude: float = Form(...),
-    detection_method: str = Form(...),   # camera | sensor | both
+    detection_method: str = Form(...),
     confidence: float = Form(...),
-    severity: str = Form(...),           # S1 | S2 | S3
+    severity: str = Form(...),
     pothole_type: str = Form("dry"),
     speed_kmh: Optional[float] = Form(None),
-    # Raw sensor data (JSON string)
     sensor_json: Optional[str] = Form(None),
-    # Optional camera image
-    image: Optional[UploadFile] = File(None),
+    image: Optional[UploadFile] = File(default=None, description="Upload an image file for YOLO pothole detection. Supported formats: JPEG, PNG, JPG"),
     db: AsyncSession = Depends(get_db),
 ):
     """

@@ -105,3 +105,35 @@ async def find_potholes_within_radius(
         {"lat": lat, "lon": lon, "radius": radius_meters},
     )
     return result.mappings().fetchall()
+
+
+def make_point_wkt(lat: float, lon: float) -> str:
+    """Create a WKT point string from lat/lon coordinates."""
+    return f"SRID=4326;POINT({lon} {lat})"
+
+
+async def cluster_centroid(pothole_ids: list, db: AsyncSession) -> Optional[tuple[float, float]]:
+    """
+    Calculate the weighted centroid of a cluster of potholes.
+    Returns (lat, lon) tuple or None if no valid centroid.
+    """
+    if not pothole_ids:
+        return None
+    
+    placeholders = ", ".join(f":id{i}" for i in range(len(pothole_ids)))
+    params = {f"id{i}": pid for i, pid in enumerate(pothole_ids)}
+    
+    result = await db.execute(
+        text(f"""
+            SELECT 
+                ST_Y(ST_Centroid(ST_Collect(location))) as centroid_lat,
+                ST_X(ST_Centroid(ST_Collect(location))) as centroid_lon
+            FROM potholes
+            WHERE id IN ({placeholders})
+        """),
+        params,
+    )
+    row = result.fetchone()
+    if row and row[0] and row[1]:
+        return float(row[0]), float(row[1])
+    return None

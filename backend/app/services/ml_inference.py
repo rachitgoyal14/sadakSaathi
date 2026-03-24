@@ -14,6 +14,7 @@ import io
 from pathlib import Path
 from typing import Optional
 import numpy as np
+from ultralytics.nn.tasks import Conv
 
 logger = logging.getLogger(__name__)
 
@@ -42,9 +43,20 @@ async def load_models():
     yolo_path = Path(settings.YOLO_MODEL_PATH)
     if yolo_path.exists():
         try:
+            import torch
+            import torch.nn as nn
             from ultralytics import YOLO
+
+            # Fix for PyTorch 2.6+ - Ultralytics hasn't updated for safe globals yet
+            _original_load = torch.load
+            def _patched_torch_load(*args, **kwargs):
+                kwargs.setdefault("weights_only", False)
+                return _original_load(*args, **kwargs)
+            torch.load = _patched_torch_load
+
             _yolo_model = YOLO(str(yolo_path))
             _yolo_model.fuse()
+            torch.load = _original_load  # Restore original
             logger.info(f"YOLOv8 model loaded from {yolo_path}")
         except Exception as e:
             logger.error(f"Failed to load YOLOv8: {e}")
@@ -55,7 +67,7 @@ async def load_models():
     lstm_path = Path(settings.LSTM_MODEL_PATH)
     if lstm_path.exists():
         try:
-            _lstm_model = _torch.load(str(lstm_path), map_location="cpu")
+            _lstm_model = _torch.load(str(lstm_path), map_location="cpu",weights_only=False)
             _lstm_model.eval()
             logger.info(f"LSTM model loaded from {lstm_path}")
         except Exception as e:
