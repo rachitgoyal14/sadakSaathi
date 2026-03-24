@@ -151,3 +151,47 @@ async def update_rider_location(rider_id: str, lat: float, lon: float, db: Async
         {"lat": lat, "lon": lon, "id": rider_id},
     )
     await db.commit()
+
+
+async def send_proximity_check(rider_id: str, lat: float, lon: float, db: AsyncSession):
+    """
+    Check for nearby potholes and send proximity alerts to the rider.
+    Called when rider location is updated.
+    """
+    result = await db.execute(
+        text("""
+            SELECT id, severity, water_filled, report_count,
+                   ST_Y(location::geometry) as pothole_lat,
+                   ST_X(location::geometry) as pothole_lon,
+                   ST_Distance(
+                       ST_MakePoint(:lon, :lat)::geography,
+                       location::geography
+                   ) AS distance_meters
+            FROM potholes
+            WHERE status IN ('candidate', 'confirmed')
+            AND ST_DWithin(
+                location::geography,
+                ST_MakePoint(:lon, :lat)::geography,
+                :radius
+            )
+            ORDER BY distance_meters
+        """),
+        {"lat": lat, "lon": lon, "radius": settings.ALERT_RADIUS_METERS}
+    )
+    rows = result.mappings().fetchall()
+    
+    for row in rows:
+        priority = _compute_priority(row["severity"], row["water_filled"])
+        alert_payload = {
+            "type": "pothole_alert",
+            "pothole_id": row["id"],
+            "latitude": row["pothole_lat"],
+            "longitude": row["pothole_lon"],
+            "severity": row["severity"],
+            "water_filled": row["water_filled"],
+            "priority": priority,
+            "distance_meters": round(row["distance_meters"]),
+            "message": _build_voice_message(row["severity"], row["water_filled"]),
+            "report_count": row["report_count"],
+        }
+        await manager.send_alert(rider_id, alert_payload)

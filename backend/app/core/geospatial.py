@@ -60,3 +60,48 @@ async def count_potholes_near(lat: float, lon: float, radius_meters: float, db: 
         {"lat": lat, "lon": lon, "radius": radius_meters},
     )
     return result.scalar() or 0
+
+
+async def find_potholes_within_radius(
+    lat: float,
+    lon: float,
+    radius_meters: float,
+    db: AsyncSession,
+    status_filter: Optional[list] = None,
+) -> list:
+    """
+    Find all potholes within a given radius from a point.
+    Returns a list of pothole records with distance.
+    """
+    statuses = status_filter or ["candidate", "confirmed"]
+    placeholders = ", ".join(f"'{s}'" for s in statuses)
+
+    result = await db.execute(
+        text(f"""
+            SELECT
+                id,
+                ST_Y(location::geometry) as latitude,
+                ST_X(location::geometry) as longitude,
+                severity,
+                status,
+                report_count,
+                water_filled,
+                estimated_damage_inr,
+                contractor_id,
+                ST_Distance(
+                    location::geography,
+                    ST_MakePoint(:lon, :lat)::geography
+                ) AS distance_meters,
+                created_at
+            FROM potholes
+            WHERE status IN ({placeholders})
+            AND ST_DWithin(
+                location::geography,
+                ST_MakePoint(:lon, :lat)::geography,
+                :radius
+            )
+            ORDER BY distance_meters
+        """),
+        {"lat": lat, "lon": lon, "radius": radius_meters},
+    )
+    return result.mappings().fetchall()

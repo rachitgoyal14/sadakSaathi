@@ -18,6 +18,10 @@ class PotholeStatus(str, enum.Enum):
     REPAIRED = "repaired"
     FRAUD = "fraud"          # Claimed repaired but not verified
 
+class PotholeType(str, enum.Enum):
+    dry = "dry"
+    water_filled = "water_filled"
+
 class Pothole(Base):
     __tablename__ = "potholes"
 

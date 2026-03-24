@@ -54,3 +54,63 @@ async def update_confirmation(pothole: Pothole, report: PotholeReport, db: Async
     await db.commit()
     await db.refresh(pothole)
     return pothole
+
+
+async def create_candidate(report: PotholeReport, db: AsyncSession) -> Pothole:
+    """Create a new pothole candidate from a report."""
+    result = await db.execute(
+        text("""
+            INSERT INTO potholes (id, location, severity, status, report_count, camera_confirmed, sensor_confirmed)
+            VALUES (
+                :id,
+                ST_SetSRID(ST_MakePoint(:lon, :lat), 4326),
+                :severity,
+                'candidate',
+                1,
+                :camera_confirmed,
+                :sensor_confirmed
+            )
+            RETURNING id
+        """),
+        {
+            "id": report.pothole_id,
+            "lat": report.latitude,
+            "lon": report.longitude,
+            "severity": report.severity.value if hasattr(report.severity, 'value') else report.severity,
+            "camera_confirmed": 1 if report.detection_method == "camera" else 0,
+            "sensor_confirmed": 1 if report.detection_method == "sensor" else 0,
+        }
+    )
+    await db.commit()
+    row = result.fetchone()
+    pothole = await db.get(Pothole, row[0])
+    return pothole
+
+
+async def deduplicate_nearby_candidates(rider_id: str, lat: float, lon: float, db: AsyncSession):
+    """Mark duplicate candidates for the same rider in the same area as fraud."""
+    radius = settings.CLUSTER_RADIUS_METERS * 2
+    await db.execute(
+        text("""
+            UPDATE potholes
+            SET status = 'fraud'
+            WHERE id IN (
+                SELECT p.id FROM potholes p
+                WHERE p.rider_id = :rider_id
+                AND p.status = 'candidate'
+                AND ST_DWithin(
+                    p.location::geography,
+                    ST_MakePoint(:lon, :lat)::geography,
+                    :radius
+                )
+                AND p.id NOT IN (
+                    SELECT pothole_id FROM pothole_reports
+                    WHERE pothole_id IS NOT NULL
+                    ORDER BY created_at DESC
+                    LIMIT 1
+                )
+            )
+        """),
+        {"rider_id": rider_id, "lat": lat, "lon": lon, "radius": radius}
+    )
+    await db.commit()

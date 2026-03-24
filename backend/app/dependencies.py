@@ -31,3 +31,5 @@ async def get_admin_rider(rider: Rider = Depends(get_current_rider)) -> Rider:
     if not rider.is_admin:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required")
     return rider
+
+get_current_admin = get_admin_rider
