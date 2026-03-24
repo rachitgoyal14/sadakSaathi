@@ -19,18 +19,17 @@ async def register(payload: RiderCreate, db: AsyncSession = Depends(get_db)):
 
     rider = Rider(
         id=str(uuid.uuid4()),
-        name=payload.name,
+        full_name=payload.name,
         phone=payload.phone,
         email=payload.email,
         hashed_password=hash_password(payload.password),
         platform=payload.platform,
-        city=payload.city,
     )
     db.add(rider)
     await db.commit()
     await db.refresh(rider)
 
-    token = create_access_token({"sub": rider.id, "role": rider.role})
+    token = create_access_token({"sub": rider.id})
     return TokenResponse(access_token=token, rider=RiderOut.model_validate(rider))
 
 
@@ -43,7 +42,7 @@ async def login(payload: RiderLogin, db: AsyncSession = Depends(get_db)):
     if not rider.is_active:
         raise HTTPException(status_code=403, detail="Account suspended")
 
-    token = create_access_token({"sub": rider.id, "role": rider.role})
+    token = create_access_token({"sub": rider.id})
     return TokenResponse(access_token=token, rider=RiderOut.model_validate(rider))
 
 
@@ -59,7 +58,7 @@ async def update_location(
     db: AsyncSession = Depends(get_db),
 ):
     await db.execute(
-        text("UPDATE riders SET last_lat=:lat, last_lon=:lon, last_seen_at=NOW() WHERE id=:id"),
+        text("UPDATE riders SET last_lat=:lat, last_lon=:lon, last_seen=NOW() WHERE id=:id"),
         {"lat": lat, "lon": lon, "id": rider.id},
     )
     await db.commit()

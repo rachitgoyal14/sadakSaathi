@@ -4,6 +4,7 @@ import app.api.v1.detection as detection
 import app.api.v1.alerts as alerts
 import app.api.v1.routes as routes
 import app.api.v1.hazards as hazards
+import app.api.v1.contractors as contractors
 
 api_router = APIRouter()
 api_router.include_router(auth.router)
@@ -11,4 +12,5 @@ api_router.include_router(detection.router)
 api_router.include_router(alerts.router)
 api_router.include_router(routes.router)
 api_router.include_router(hazards.router)
+api_router.include_router(contractors.router)
 

@@ -24,23 +24,53 @@ class PotholeTypeEnum(str, Enum):
 
 # ─── Detection ────────────────────────────────────────────────────────────────
 
-class SensorReading(BaseModel):
-    accel_x: float
-    accel_y: float
-    accel_z: float
-    timestamp_ms: float
-    speed_kmh: Optional[float] = None
+class AccelerometerReading(BaseModel):
+    x: float = Field(..., description="X-axis acceleration (m/s²)")
+    y: float = Field(..., description="Y-axis acceleration (m/s²)")
+    z: float = Field(..., description="Z-axis acceleration (m/s²)")
+    timestamp_ms: float = Field(..., description="Unix timestamp in milliseconds")
 
 
-class DetectionPayload(BaseModel):
-    rider_id: str
+class SensorWindow(BaseModel):
+    readings: List[AccelerometerReading] = Field(..., description="List of readings over 1-2 seconds (~50Hz)")
+    avg_speed_kmh: float = Field(0.0, ge=0, description="Average speed during this window")
+    road_condition: Optional[str] = Field(None, description="User-reported condition: smooth/bumpy/very_bumpy")
+
+
+class LocationData(BaseModel):
     latitude: float = Field(..., ge=-90, le=90)
     longitude: float = Field(..., ge=-180, le=180)
-    detection_method: DetectionMethod
-    confidence: float = Field(..., ge=0.0, le=1.0)
-    severity: SeverityEnum
-    pothole_type: PotholeTypeEnum = PotholeTypeEnum.dry
-    sensor_data: Optional[SensorReading] = None
+    accuracy_meters: Optional[float] = Field(None, ge=0, description="GPS accuracy in meters")
+    altitude_meters: Optional[float] = None
+    heading_degrees: Optional[float] = Field(None, ge=0, le=360)
+    timestamp_ms: float = Field(..., description="Unix timestamp in milliseconds")
+
+
+class DeviceInfo(BaseModel):
+    device_id: Optional[str] = None
+    device_model: Optional[str] = None
+    os_version: Optional[str] = None
+    app_version: Optional[str] = "1.0.0"
+    camera_resolution: Optional[str] = None
+    is_5g_available: Optional[bool] = False
+
+
+class RideContext(BaseModel):
+    ride_id: Optional[str] = Field(None, description="UUID for the ride session")
+    is_night_mode: bool = Field(False, description="Whether it's night time")
+    weather_condition: Optional[str] = Field(None, description="clear/rain/fog/haze")
+    road_type: Optional[str] = Field(None, description="highway/main_road/side_street")
+
+
+class MobileDetectionPayload(BaseModel):
+    rider_id: str
+    location: LocationData
+    speed_kmh: float = Field(..., ge=0, le=200, description="Current speed from GPS")
+    sensor_window: Optional[SensorWindow] = None
+    device_info: Optional[DeviceInfo] = None
+    ride_context: Optional[RideContext] = None
+    frame_timestamp_ms: float = Field(..., description="Video frame timestamp")
+    video_segment_id: Optional[str] = None
 
 
 class DetectionResponse(BaseModel):
@@ -49,6 +79,9 @@ class DetectionResponse(BaseModel):
     report_count: int
     severity: str
     message: str
+    yolo_confidence: Optional[float] = None
+    lstm_severity: Optional[str] = None
+    fused_confidence: Optional[float] = None
 
 
 # ─── Pothole ──────────────────────────────────────────────────────────────────
@@ -87,7 +120,6 @@ class RiderCreate(BaseModel):
     email: Optional[str] = None
     password: str = Field(..., min_length=6)
     platform: Optional[str] = None
-    city: Optional[str] = None
 
 
 class RiderLogin(BaseModel):
@@ -97,16 +129,17 @@ class RiderLogin(BaseModel):
 
 class RiderOut(BaseModel):
     id: str
-    name: str
+    name: str = Field(..., alias="full_name")
     phone: str
-    platform: Optional[str]
-    city: Optional[str]
-    total_reports: float
-    accuracy_score: float
-    created_at: datetime
+    email: Optional[str] = None
+    platform: Optional[str] = None
+    total_reports: float = 0
+    accuracy_score: float = 100.0
+    created_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
+        populate_by_name = True
 
 
 class TokenResponse(BaseModel):

@@ -1,8 +1,9 @@
 """
 Detection Router
-POST /api/v1/detect/yolo    — direct YOLO inference on uploaded image
-POST /api/v1/detect/report  — submit a pothole detection (sensor + optional image)
-POST /api/v1/detect/batch   — batch submit multiple sensor readings
+POST /api/v1/detect/mobile        — mobile app video frame analysis (5-sec intervals)
+POST /api/v1/detect/yolo          — direct YOLO inference on uploaded image
+POST /api/v1/detect/report        — submit a pothole detection (form-based)
+POST /api/v1/detect/batch         — batch submit multiple sensor readings
 GET  /api/v1/detect/status/{pothole_id} — check pothole confirmation status
 """
 
@@ -14,7 +15,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import text
 
 from app.dependencies import get_db, get_current_rider
-from app.schemas.schemas import DetectionResponse
+from app.schemas.schemas import DetectionResponse, MobileDetectionPayload, SensorWindow
 from app.models.rider import Rider
 from app.models.pothole import Pothole, PotholeReport, PotholeStatus, Severity, PotholeType
 from app.services.clustering import find_nearby_pothole, create_candidate, update_confirmation, deduplicate_nearby_candidates
@@ -24,6 +25,168 @@ from app.config import get_settings
 
 router = APIRouter(prefix="/detect", tags=["detection"])
 settings = get_settings()
+
+
+@router.post("/mobile", response_model=DetectionResponse, status_code=202)
+async def mobile_video_frame_analysis(
+    background_tasks: BackgroundTasks,
+    rider_id: str = Form(..., description="Rider ID (UUID)"),
+    latitude: float = Form(..., ge=-90, le=90, description="GPS Latitude"),
+    longitude: float = Form(..., ge=-180, le=180, description="GPS Longitude"),
+    speed_kmh: float = Form(..., ge=0, le=200, description="Current speed in km/h"),
+    frame_timestamp_ms: float = Form(..., description="Frame timestamp in milliseconds"),
+    accuracy_meters: Optional[float] = Form(None, description="GPS accuracy in meters"),
+    altitude_meters: Optional[float] = Form(None, description="Altitude in meters"),
+    heading_degrees: Optional[float] = Form(None, ge=0, le=360, description="Heading in degrees"),
+    video_segment_id: Optional[str] = Form(None, description="Video segment ID"),
+    ride_id: Optional[str] = Form(None, description="Ride session ID"),
+    is_night_mode: bool = Form(False, description="Night mode enabled"),
+    weather_condition: Optional[str] = Form(None, description="clear/rain/fog/haze"),
+    road_type: Optional[str] = Form(None, description="highway/main_road/side_street"),
+    sensor_readings_json: Optional[str] = Form(None, description="JSON array of accelerometer readings"),
+    image: UploadFile = File(..., description="Video frame image file (JPEG/PNG) - Click 'Choose File' to upload"),
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Mobile app endpoint for video frame analysis.
+    
+    **In Swagger UI:**
+    1. Fill in the form fields (rider_id, latitude, longitude, speed_kmh, etc.)
+    2. Click "Choose File" button to select an image for the image field
+    3. Click Execute
+    
+    **For sensor data**, paste JSON like:
+    ```json
+    [{"x":0.1,"y":0.2,"z":9.8,"timestamp_ms":1712345678901}]
+    ```
+    """
+    lat = latitude
+    lon = longitude
+    
+    yolo_result = None
+    lstm_result = None
+    image_s3_key = None
+    yolo_bbox_json = None
+    
+    # ── 1. YOLO Inference (if image provided) ──────────────────────────────────
+    if image and image.content_type and image.content_type.startswith("image/"):
+        image_bytes = await image.read()
+        yolo_result = await run_yolo_inference(image_bytes)
+        
+        if yolo_result.detected:
+            yolo_bbox_json = json.dumps(yolo_result.bbox)
+            image_s3_key = f"reports/{rider_id}/{uuid.uuid4()}.jpg"
+            background_tasks.add_task(_upload_to_s3, image_bytes, image_s3_key)
+    
+    # ── 2. LSTM Inference (if sensor window provided) ─────────────────────────
+    if sensor_readings_json:
+        try:
+            readings = json.loads(sensor_readings_json)
+            if readings and len(readings) > 0:
+                lstm_result = await run_lstm_inference(readings)
+        except (json.JSONDecodeError, Exception):
+            pass
+    
+    # ── 3. Fuse Results ────────────────────────────────────────────────────────
+    detected = False
+    confidence = speed_kmh / 200.0
+    severity = "S1"
+    pothole_type = "dry"
+    
+    if yolo_result and yolo_result.detected:
+        detected = True
+        confidence = max(confidence, yolo_result.confidence)
+        severity = yolo_result.severity
+        if yolo_result.water_filled:
+            pothole_type = "water_filled"
+    
+    if lstm_result and lstm_result.detected:
+        detected = True
+        confidence = max(confidence, lstm_result.confidence)
+        severity = _max_severity(severity, lstm_result.severity)
+    
+    # Neither model detected - skip recording
+    if not detected:
+        return DetectionResponse(
+            pothole_id="",
+            status="not_detected",
+            report_count=0,
+            severity=severity,
+            message="No pothole detected by ML models.",
+            yolo_confidence=yolo_result.confidence if yolo_result else None,
+            lstm_severity=lstm_result.severity if lstm_result else None,
+        )
+    
+    # ── 4. Record Detection ───────────────────────────────────────────────────
+    rider_result = await db.execute(
+        text("SELECT accuracy_score FROM riders WHERE id = :id"),
+        {"id": rider_id}
+    )
+    rider_row = rider_result.fetchone()
+    rider_weight = float(rider_row[0]) if rider_row else 1.0
+    
+    pothole = await find_nearby_pothole(lat, lon, db)
+    
+    if not pothole:
+        city = await _reverse_geocode_city(lat, lon)
+        pothole = await create_candidate(
+            lat=lat, lon=lon,
+            severity=severity, pothole_type=pothole_type,
+            city=city, db=db,
+        )
+    
+    detection_method = "both" if (yolo_result and lstm_result) else ("camera" if yolo_result else "sensor")
+    
+    report = PotholeReport(
+        id=str(uuid.uuid4()),
+        pothole_id=pothole.id,
+        rider_id=rider_id,
+        latitude=lat,
+        longitude=lon,
+        severity=severity,
+        detection_method=detection_method,
+        confidence=confidence,
+        pothole_type=pothole_type,
+        image_s3_key=image_s3_key,
+        yolo_bbox=yolo_bbox_json,
+        rider_weight=rider_weight,
+        speed_kmh=speed_kmh,
+    )
+    db.add(report)
+    await db.flush()
+    
+    pothole, just_confirmed = await update_confirmation(pothole, report, db)
+    await db.commit()
+    
+    # ── 5. Side Effects ───────────────────────────────────────────────────────
+    if just_confirmed:
+        background_tasks.add_task(_run_dedup, pothole.id, lat, lon)
+        background_tasks.add_task(trigger_nearby_alerts, pothole.id, lat, lon)
+        background_tasks.add_task(_run_accountability, pothole.id)
+        if image_s3_key:
+            background_tasks.add_task(_set_best_image, pothole.id, image_s3_key)
+    
+    background_tasks.add_task(update_rider_location, rider_id, lat, lon, db)
+    background_tasks.add_task(_increment_rider_reports, rider_id)
+    
+    status_msg = {
+        PotholeStatus.CANDIDATE: f"Candidate logged. {settings.CONFIRMED_THRESHOLD - pothole.report_count} more reports to confirm.",
+        PotholeStatus.CONFIRMED: "Pothole confirmed! Alerts dispatched.",
+        PotholeStatus.REPAIR_CLAIMED: "Under repair claim.",
+        PotholeStatus.REPAIRED: "Marked repaired.",
+        PotholeStatus.FRAUD: "Under investigation.",
+    }
+    
+    return DetectionResponse(
+        pothole_id=pothole.id,
+        status=pothole.status,
+        report_count=pothole.report_count,
+        severity=pothole.severity,
+        message=status_msg.get(pothole.status, "Report recorded."),
+        yolo_confidence=yolo_result.confidence if yolo_result else None,
+        lstm_severity=lstm_result.severity if lstm_result else None,
+        fused_confidence=confidence,
+    )
 
 
 @router.post("/yolo", response_model=dict, status_code=200)
@@ -62,13 +225,15 @@ async def submit_detection(
     pothole_type: str = Form("dry"),
     speed_kmh: Optional[float] = Form(None),
     sensor_json: Optional[str] = Form(None),
-    image: Optional[UploadFile] = File(default=None, description="Upload an image file for YOLO pothole detection. Supported formats: JPEG, PNG, JPG"),
+    image: UploadFile = File(..., description="Upload an image file for YOLO pothole detection. Supported formats: JPEG, PNG, JPG"),
     db: AsyncSession = Depends(get_db),
 ):
     """
     Main detection ingestion endpoint.
     Called by rider app passively as they ride.
     Handles ML inference, clustering, confirmation, and alert dispatch.
+    
+    **Image is required** - if no image is uploaded, use /api/v1/detect/mobile endpoint instead.
     """
 
     # ── 1. Run YOLO inference if image provided ───────────────────────────────
