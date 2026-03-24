@@ -35,7 +35,15 @@ def run_migrations_offline() -> None:
 
 
 async def run_async_migrations() -> None:
-    url = config.get_main_option("sqlalchemy.url")
+    import os
+    url = os.environ.get("DATABASE_URL", config.get_main_option("sqlalchemy.url"))
+    
+    # Convert postgresql:// to postgresql+asyncpg:// if needed
+    if url.startswith("postgresql://"):
+        url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Remove sslmode params that cause issues
+    url = url.split("?")[0]
+    
     connectable = create_async_engine(
         url,
         poolclass=pool.NullPool,
