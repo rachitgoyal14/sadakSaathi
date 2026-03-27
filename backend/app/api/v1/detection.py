@@ -27,25 +27,59 @@ router = APIRouter(prefix="/detect", tags=["detection"])
 settings = get_settings()
 
 
+import logging
+logger = logging.getLogger(__name__)
+
 @router.post("/mobile", response_model=DetectionResponse, status_code=202)
-async def mobile_video_frame_analysis(
+async def mobile_video_frame_analysis_wrapper(
     background_tasks: BackgroundTasks,
     rider_id: str = Form(..., description="Rider ID (UUID)"),
     latitude: float = Form(..., ge=-90, le=90, description="GPS Latitude"),
     longitude: float = Form(..., ge=-180, le=180, description="GPS Longitude"),
-    speed_kmh: float = Form(..., ge=0, le=200, description="Current speed in km/h"),
+    speed_kmh: Optional[float] = Form(None, ge=0, le=200, description="Current speed in km/h"),
     frame_timestamp_ms: float = Form(..., description="Frame timestamp in milliseconds"),
     accuracy_meters: Optional[float] = Form(None, description="GPS accuracy in meters"),
     altitude_meters: Optional[float] = Form(None, description="Altitude in meters"),
-    heading_degrees: Optional[float] = Form(None, ge=0, le=360, description="Heading in degrees"),
+    heading_degrees: Optional[float] = Form(None, ge=-1, le=360, description="Heading in degrees"),
     video_segment_id: Optional[str] = Form(None, description="Video segment ID"),
     ride_id: Optional[str] = Form(None, description="Ride session ID"),
     is_night_mode: bool = Form(False, description="Night mode enabled"),
     weather_condition: Optional[str] = Form(None, description="clear/rain/fog/haze"),
     road_type: Optional[str] = Form(None, description="highway/main_road/side_street"),
     sensor_readings_json: Optional[str] = Form(None, description="JSON array of accelerometer readings"),
-    image: UploadFile = File(..., description="Video frame image file (JPEG/PNG) - Click 'Choose File' to upload"),
+    image: UploadFile = File(..., description="Video frame image file"),
     db: AsyncSession = Depends(get_db),
+):
+    try:
+        return await _mobile_detection_impl(
+            background_tasks, rider_id, latitude, longitude, speed_kmh,
+            frame_timestamp_ms, accuracy_meters, altitude_meters, heading_degrees,
+            video_segment_id, ride_id, is_night_mode, weather_condition, road_type,
+            sensor_readings_json, image, db
+        )
+    except Exception as e:
+        logger.error(f"Detection error: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def _mobile_detection_impl(
+    background_tasks: BackgroundTasks,
+    rider_id: str,
+    latitude: float,
+    longitude: float,
+    speed_kmh: Optional[float],
+    frame_timestamp_ms: float,
+    accuracy_meters: Optional[float],
+    altitude_meters: Optional[float],
+    heading_degrees: Optional[float],
+    video_segment_id: Optional[str],
+    ride_id: Optional[str],
+    is_night_mode: bool,
+    weather_condition: Optional[str],
+    road_type: Optional[str],
+    sensor_readings_json: Optional[str],
+    image: UploadFile,
+    db: AsyncSession,
 ):
     """
     Mobile app endpoint for video frame analysis.
@@ -89,7 +123,7 @@ async def mobile_video_frame_analysis(
     
     # ── 3. Fuse Results ────────────────────────────────────────────────────────
     detected = False
-    confidence = speed_kmh / 200.0
+    confidence = (speed_kmh or 0) / 200.0
     severity = "S1"
     pothole_type = "dry"
     
@@ -123,7 +157,7 @@ async def mobile_video_frame_analysis(
         {"id": rider_id}
     )
     rider_row = rider_result.fetchone()
-    rider_weight = float(rider_row[0]) if rider_row else 1.0
+    rider_weight = float(rider_row[0]) if rider_row and rider_row[0] is not None else 1.0
     
     pothole = await find_nearby_pothole(lat, lon, db)
     
@@ -137,13 +171,20 @@ async def mobile_video_frame_analysis(
     
     detection_method = "both" if (yolo_result and lstm_result) else ("camera" if yolo_result else "sensor")
     
+    # Convert severity string to enum
+    severity_enum = Severity.S1
+    if severity == "S2":
+        severity_enum = Severity.S2
+    elif severity == "S3":
+        severity_enum = Severity.S3
+    
     report = PotholeReport(
         id=str(uuid.uuid4()),
         pothole_id=pothole.id,
         rider_id=rider_id,
         latitude=lat,
         longitude=lon,
-        severity=severity,
+        severity=severity_enum,
         detection_method=detection_method,
         confidence=confidence,
         pothole_type=pothole_type,

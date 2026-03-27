@@ -1,2 +1,0 @@
-npx expo start --dev-client --tunnel --scheme sadaksaathi
-

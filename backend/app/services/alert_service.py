@@ -168,7 +168,7 @@ async def send_proximity_check(rider_id: str, lat: float, lon: float, db: AsyncS
                        location::geography
                    ) AS distance_meters
             FROM potholes
-            WHERE status IN ('candidate', 'confirmed')
+            WHERE status IN ('CANDIDATE', 'CONFIRMED')
             AND ST_DWithin(
                 location::geography,
                 ST_MakePoint(:lon, :lat)::geography,

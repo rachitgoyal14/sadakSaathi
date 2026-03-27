@@ -54,7 +54,7 @@ async def list_hazards(
         filters.append("p.status = :status"); params["status"] = status
     else:
         # Default: show candidate + confirmed (not repaired clutter)
-        filters.append("p.status IN ('candidate','confirmed','repair_claimed','fraud')")
+        filters.append("p.status IN ('CANDIDATE','CONFIRMED','REPAIR_CLAIMED','FRAUD')")
     if severity:
         filters.append("p.severity = :severity"); params["severity"] = severity
     if city:
@@ -91,7 +91,7 @@ async def get_nearby_hazards(
     """Returns potholes within radius of a GPS point. Used by rider app for ahead-alerts."""
     rows = await find_potholes_within_radius(
         db, lat, lon, radius_meters,
-        status_filter=["confirmed", "candidate"],
+        status_filter=["CONFIRMED", "CANDIDATE"],
     )
     return [
         HazardMapItem(
@@ -122,8 +122,8 @@ async def get_city_stats(
             SELECT
                 COALESCE(:city_name, 'All Cities') as city,
                 COUNT(*) as total_potholes,
-                COUNT(*) FILTER (WHERE status='confirmed') as confirmed_potholes,
-                COUNT(*) FILTER (WHERE status='repaired') as repaired_potholes,
+                COUNT(*) FILTER (WHERE status='CONFIRMED') as confirmed_potholes,
+                COUNT(*) FILTER (WHERE status='REPAIRED') as repaired_potholes,
                 COALESCE(SUM(estimated_damage_inr), 0) as total_damage_inr
             FROM potholes
             {city_filter}

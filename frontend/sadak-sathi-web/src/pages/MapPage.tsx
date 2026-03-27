@@ -24,12 +24,33 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
   const [selectedRoute, setSelectedRoute] = useState<'direct' | 'safe' | null>('safe');
   const [isDriving, setIsDriving] = useState(false);
   const [showCameraPopup, setShowCameraPopup] = useState(false);
+  const [detectionAlert, setDetectionAlert] = useState<{ detected: boolean; message: string; severity?: string } | null>(null);
 
   const handleAllowCamera = useCallback(() => {
-    if ((window as any).ReactNativeWebView) {
+    const riderStr = localStorage.getItem('rider');
+    const token = localStorage.getItem('access_token');
+    
+    if ((window as any).ReactNativeWebView && riderStr && token) {
+      const rider = JSON.parse(riderStr);
       (window as any).ReactNativeWebView.postMessage(
-        JSON.stringify({ type: "START_CAMERA" })
+        JSON.stringify({ 
+          type: "SET_RIDER_INFO",
+          rider: rider,
+          token: token
+        })
       );
+      
+      setTimeout(() => {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({ type: "START_CAMERA" })
+        );
+      }, 500);
+    } else {
+      if ((window as any).ReactNativeWebView) {
+        (window as any).ReactNativeWebView.postMessage(
+          JSON.stringify({ type: "START_CAMERA" })
+        );
+      }
     }
     setShowCameraPopup(false);
     setIsDriving(true);
@@ -84,6 +105,18 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
         }
         if (msg.type === "PERMISSION_ERROR") {
           console.error("❌ Permission error:", msg.data);
+        }
+        if (msg.type === "DETECTION_RESULT") {
+          console.log("🔍 Detection result:", msg.data);
+          const hasYoloDetection = msg.data.yolo_confidence && msg.data.yolo_confidence > 0.3;
+          if (hasYoloDetection || (msg.data.status && msg.data.status !== 'not_detected')) {
+            setDetectionAlert({
+              detected: true,
+              message: msg.data.message || `Pothole detected! Confidence: ${Math.round((msg.data.yolo_confidence || 0) * 100)}%`,
+              severity: msg.data.severity,
+            });
+            setTimeout(() => setDetectionAlert(null), 5000);
+          }
         }
       } catch (e) {
         console.log("Invalid message:", e);
@@ -234,6 +267,38 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
                 </div>
               </motion.div>
             </div>
+          )}
+        </AnimatePresence>
+
+        {/* Pothole Detection Alert */}
+        <AnimatePresence>
+          {detectionAlert && detectionAlert.detected && (
+            <motion.div
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              className="fixed top-4 left-4 right-4 z-[100]"
+            >
+              <div className="bg-red-500 text-white rounded-2xl p-4 shadow-lg flex items-center gap-3">
+                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-bold text-sm">Pothole Detected!</p>
+                  <p className="text-xs text-white/80">{detectionAlert.message}</p>
+                </div>
+                <button onClick={() => setDetectionAlert(null)} className="p-1">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              </div>
+            </motion.div>
           )}
         </AnimatePresence>
       </motion.div>

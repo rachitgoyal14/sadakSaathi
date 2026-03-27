@@ -143,7 +143,7 @@ async def update_location_rest(
 async def get_alert_stats(db: AsyncSession = Depends(get_db)):
     """Active connection stats — public for transparency."""
     result = await db.execute(
-        text("SELECT COUNT(*) FROM potholes WHERE status='confirmed'")
+        text("SELECT COUNT(*) FROM potholes WHERE status='CONFIRMED'")
     )
     confirmed_count = result.scalar() or 0
     return {
@@ -162,7 +162,7 @@ async def _send_initial_hazards(rider_id: str, lat: float, lon: float):
         nearby = await find_potholes_within_radius(
             db, lat, lon,
             radius_meters=settings.ALERT_RADIUS_METERS,
-            status_filter=["confirmed"],
+        status_filter=["CONFIRMED"],
         )
     for row in nearby:
         alert = {

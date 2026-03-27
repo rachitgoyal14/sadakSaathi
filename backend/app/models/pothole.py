@@ -13,10 +13,11 @@ class Severity(str, enum.Enum):
     S3 = "S3"   # Severe
 
 class PotholeStatus(str, enum.Enum):
-    CANDIDATE = "candidate"
-    CONFIRMED = "confirmed"
-    REPAIRED = "repaired"
-    FRAUD = "fraud"          # Claimed repaired but not verified
+    CANDIDATE = "CANDIDATE"
+    CONFIRMED = "CONFIRMED"
+    REPAIR_CLAIMED = "REPAIR_CLAIMED"
+    REPAIRED = "REPAIRED"
+    FRAUD = "FRAUD"
 
 class PotholeType(str, enum.Enum):
     dry = "dry"

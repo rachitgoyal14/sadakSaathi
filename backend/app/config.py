@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     # ML model paths
     YOLO_MODEL_PATH: str = "ml_models/best.pt"
     LSTM_MODEL_PATH: str = "ml_models/lstm_accelerometer.pt"
-    YOLO_CONFIDENCE_THRESHOLD: float = 0.5
+    YOLO_CONFIDENCE_THRESHOLD: float = 0.25
 
     class Config:
         env_file = ".env"

@@ -5,16 +5,16 @@ from app.models.base import Base
 settings = get_settings()
 
 database_url = settings.DATABASE_URL
-if database_url.startswith("postgresql://"):
-    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
-
-database_url = database_url.split("?")[0]
 
 is_sqlite = database_url.startswith("sqlite")
 
-engine_kwargs = {"echo": settings.DEBUG}
+if database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+
+engine_kwargs: dict = {"echo": settings.DEBUG}
 if not is_sqlite:
-    engine_kwargs.update({"pool_size": 10, "max_overflow": 20})
+    engine_kwargs["pool_size"] = 10
+    engine_kwargs["max_overflow"] = 20
 
 engine = create_async_engine(database_url, **engine_kwargs)
 

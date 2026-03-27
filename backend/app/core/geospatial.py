@@ -13,7 +13,7 @@ async def potholes_in_bbox(
     status_filter: Optional[list] = None,
     limit: int = 500,
 ) -> list:
-    statuses = status_filter or ["candidate", "confirmed"]
+    statuses = status_filter or ["CANDIDATE", "CONFIRMED"]
     placeholders = ", ".join(f"'{s}'" for s in statuses)
 
     result = await db.execute(
@@ -55,7 +55,7 @@ async def count_potholes_near(lat: float, lon: float, radius_meters: float, db: 
                 location::geography,
                 ST_MakePoint(:lon, :lat)::geography,
                 :radius
-            ) AND status IN ('candidate', 'confirmed')
+            ) AND status IN ('CANDIDATE', 'CONFIRMED')
         """),
         {"lat": lat, "lon": lon, "radius": radius_meters},
     )
@@ -73,7 +73,7 @@ async def find_potholes_within_radius(
     Find all potholes within a given radius from a point.
     Returns a list of pothole records with distance.
     """
-    statuses = status_filter or ["candidate", "confirmed"]
+    statuses = status_filter or ["CANDIDATE", "CONFIRMED"]
     placeholders = ", ".join(f"'{s}'" for s in statuses)
 
     result = await db.execute(

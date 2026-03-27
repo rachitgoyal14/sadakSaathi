@@ -155,7 +155,7 @@ async def _score_route(route_data: dict, db: AsyncSession) -> float:
         text("""
             SELECT severity, water_filled, report_count
             FROM potholes
-            WHERE status IN ('candidate', 'confirmed')
+            WHERE status IN ('CANDIDATE', 'CONFIRMED')
             AND ST_DWithin(
                 location::geography,
                 ST_GeomFromText(:line, 4326)::geography,

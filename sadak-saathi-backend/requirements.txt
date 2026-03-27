@@ -1,9 +1,0 @@
-fastapi
-uvicorn[standard]
-sqlalchemy
-psycopg2-binary
-redis
-python-dotenv
-GeoAlchemy2==0.18.4
-alembic==1.18.4
-ultralytics>=8.0.0

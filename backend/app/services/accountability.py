@@ -201,10 +201,10 @@ async def get_contractor_dashboard(contractor_id: str, db: AsyncSession) -> dict
     result = await db.execute(
         text("""
             SELECT
-                COUNT(*) FILTER (WHERE status = 'candidate') as candidates,
-                COUNT(*) FILTER (WHERE status = 'confirmed') as confirmed,
-                COUNT(*) FILTER (WHERE status = 'repaired') as repaired,
-                COUNT(*) FILTER (WHERE status = 'fraud') as fraud,
+                COUNT(*) FILTER (WHERE status = 'CANDIDATE') as candidates,
+                COUNT(*) FILTER (WHERE status = 'CONFIRMED') as confirmed,
+                COUNT(*) FILTER (WHERE status = 'REPAIRED') as repaired,
+                COUNT(*) FILTER (WHERE status = 'FRAUD') as fraud,
                 SUM(estimated_damage_inr) as total_damage
             FROM potholes
             WHERE contractor_id = :cid
