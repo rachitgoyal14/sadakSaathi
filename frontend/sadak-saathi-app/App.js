@@ -5,7 +5,7 @@ import { useRef, useState, useCallback } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
 
-const API_URL = "http://10.191.82.154:8000/api/v1";
+const API_URL = "http://172.20.10.2:8000/api/v1";
 const DETECTION_INTERVAL = 2000; // 2 seconds
 
 export default function App() {
@@ -301,7 +301,7 @@ export default function App() {
     <View style={{ flex: 1 }}>
       <WebView
         ref={webRef}
-        source={{ uri: "http://10.191.82.154:3000/" }}
+        source={{ uri: "http://172.20.10.2:3000/" }}
         onMessage={handleMessage}
       />
 

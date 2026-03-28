@@ -1,4 +1,4 @@
-const API_URL = 'http://10.191.82.154:8000/api/v1';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
 
 export interface RiderData {
   name: string;
