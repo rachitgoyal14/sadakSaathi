@@ -1,14 +1,23 @@
 import { CameraView, useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { Accelerometer } from "expo-sensors";
-import { useRef, useState, useCallback } from "react";
+import { Audio } from "expo-av";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { View } from "react-native";
 import { WebView } from "react-native-webview";
 
 const API_URL = "http://172.20.10.2:8000/api/v1";
-const DETECTION_INTERVAL = 2000; // 2 seconds
+const DETECTION_INTERVAL = 2000;
 
 export default function App() {
+  useEffect(() => {
+    Audio.setAudioModeAsync({
+      playsInSilentModeIOS: false,
+      staysActiveInBackground: false,
+      shouldDuckAndroid: false,
+    });
+  }, []);
+
   const webRef = useRef(null);
 
   const [permission, requestPermission] = useCameraPermissions();
@@ -73,6 +82,7 @@ export default function App() {
         quality: 0.5,
         base64: true,
         skipProcessing: true,
+        muteAudio: true,
       });
 
       if (!photo?.base64) return;
@@ -136,6 +146,10 @@ export default function App() {
             severity: result.severity,
             message: result.message 
           }
+        }));
+        
+        webRef.current?.postMessage(JSON.stringify({
+          type: "REFRESH_MAP"
         }));
       }
     } catch (error) {
@@ -315,6 +329,7 @@ export default function App() {
             opacity: 0,
           }}
           facing="back"
+          enableShutterSound={false}
           onCameraReady={() => {
             console.log("📷 Camera is ready!");
             setCameraReady(true);

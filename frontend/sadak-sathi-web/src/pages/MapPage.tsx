@@ -1,7 +1,30 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
 import { SearchIcon, XIcon } from '../utils/icons';
 import DashboardLayout from '../components/DashboardLayout';
+import { hazardsApi, HazardItem } from '../services/api';
+
+delete (L.Icon.Default.prototype as any)._getIconUrl;
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png',
+  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png',
+});
+
+const severityColors: Record<string, string> = {
+  S1: '#ef4444',
+  S2: '#f97316',
+  S3: '#eab308',
+};
+
+const statusIcons: Record<string, string> = {
+  CANDIDATE: '🔵',
+  CONFIRMED: '🔴',
+  REPAIRED: '🟢',
+  FRAUD: '⚫',
+};
 
 const ShieldIconLocal = ({ className }: { className?: string }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -25,6 +48,46 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
   const [isDriving, setIsDriving] = useState(false);
   const [showCameraPopup, setShowCameraPopup] = useState(false);
   const [detectionAlert, setDetectionAlert] = useState<{ detected: boolean; message: string; severity?: string } | null>(null);
+  const [potholes, setPotholes] = useState<HazardItem[]>([]);
+  const [mapCenter, setMapCenter] = useState<[number, number]>([28.6139, 77.209]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchPotholes = useCallback(async () => {
+    try {
+      const data = await hazardsApi.getHazards({ limit: 100 });
+      setPotholes(data);
+      if (data.length > 0) {
+        const avgLat = data.reduce((sum, p) => sum + p.latitude, 0) / data.length;
+        const avgLon = data.reduce((sum, p) => sum + p.longitude, 0) / data.length;
+        setMapCenter([avgLat, avgLon]);
+      }
+    } catch (error) {
+      console.error('Failed to fetch potholes:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchPotholes();
+    const interval = setInterval(() => {
+      fetchPotholes();
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [fetchPotholes]);
+
+  useEffect(() => {
+    const handler = (event: any) => {
+      try {
+        const msg = JSON.parse(event.data);
+        if (msg.type === "DETECTION_RESULT" && msg.data.status === "CONFIRMED") {
+          fetchPotholes();
+        }
+      } catch (e) {}
+    };
+    window.addEventListener("message", handler);
+    return () => window.removeEventListener("message", handler);
+  }, [fetchPotholes]);
 
   const handleAllowCamera = useCallback(() => {
     const riderStr = localStorage.getItem('rider');
@@ -118,6 +181,10 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
             setTimeout(() => setDetectionAlert(null), 5000);
           }
         }
+        if (msg.type === "REFRESH_MAP") {
+          console.log("🔄 Refreshing map from mobile app");
+          fetchPotholes();
+        }
       } catch (e) {
         console.log("Invalid message:", e);
       }
@@ -151,14 +218,52 @@ export default function MapPage({ onStopDriving }: MapPageProps) {
           )}
         </div>
 
-        {/* Map View Image */}
+        {/* Map View with Leaflet */}
         <div className="w-full h-[280px] bg-gray-200 rounded-[24px] overflow-hidden shadow-sm shrink-0 relative">
-          <img 
-            src="https://picsum.photos/seed/mapview/600/400" 
-            alt="Map View" 
-            className="w-full h-full object-cover"
-            referrerPolicy="no-referrer"
-          />
+          <MapContainer 
+            center={mapCenter} 
+            zoom={13} 
+            style={{ height: '100%', width: '100%', borderRadius: '24px' }}
+            scrollWheelZoom={false}
+            key={potholes.length}
+          >
+            <TileLayer
+              attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+              url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+            />
+            {potholes.map((pothole) => (
+              <Marker 
+                key={pothole.id} 
+                position={[pothole.latitude, pothole.longitude]}
+              >
+                <Popup>
+                  <div className="text-sm">
+                    <div className="font-bold">Pothole Detected</div>
+                    <div>Severity: <span style={{ color: severityColors[pothole.severity] }}>{pothole.severity}</span></div>
+                    <div>Status: {statusIcons[pothole.status]} {pothole.status}</div>
+                    <div>Reports: {pothole.report_count}</div>
+                    <div>Days Unrepaired: {pothole.days_unrepaired}</div>
+                  </div>
+                </Popup>
+              </Marker>
+            ))}
+          </MapContainer>
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gray-200/50 rounded-[24px]">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-600"></div>
+            </div>
+          )}
+          <button 
+            onClick={fetchPotholes}
+            className="absolute top-3 right-3 z-[400] bg-white/90 backdrop-blur-sm rounded-full p-2 shadow hover:bg-white transition-colors"
+          >
+            <svg className="w-4 h-4 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+          </button>
+          <div className="absolute bottom-3 left-3 z-[400] bg-white/90 backdrop-blur-sm rounded-lg px-2 py-1 text-xs font-medium shadow">
+            {potholes.length} potholes detected
+          </div>
         </div>
 
         {/* Route Cards */}

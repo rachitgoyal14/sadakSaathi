@@ -158,6 +158,22 @@ class ApiService {
   }
 }
 
+export interface HazardItem {
+  id: string;
+  latitude: number;
+  longitude: number;
+  severity: string;
+  status: string;
+  pothole_type: string;
+  report_count: number;
+  camera_confirmed: number;
+  sensor_confirmed: number;
+  estimated_damage_inr: number;
+  contractor_name?: string;
+  days_unrepaired: number;
+  created_at: string;
+}
+
 export interface DetectionResponse {
   pothole_id: string;
   status: string;
@@ -169,4 +185,41 @@ export interface DetectionResponse {
   fused_confidence?: number;
 }
 
+class HazardsApiService {
+  async getHazards(params?: {
+    min_lat?: number;
+    max_lat?: number;
+    min_lon?: number;
+    max_lon?: number;
+    status?: string;
+    severity?: string;
+    city?: string;
+    limit?: number;
+    offset?: number;
+  }): Promise<HazardItem[]> {
+    const queryParams = new URLSearchParams();
+    if (params) {
+      Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined) {
+          queryParams.append(key, value.toString());
+        }
+      });
+    }
+    
+    const response = await fetch(`${API_URL}/hazards/?${queryParams.toString()}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch hazards');
+    }
+
+    return response.json();
+  }
+}
+
+export const hazardsApi = new HazardsApiService();
 export const api = new ApiService();

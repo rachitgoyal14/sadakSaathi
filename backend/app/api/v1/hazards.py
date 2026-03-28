@@ -71,7 +71,7 @@ async def list_hazards(
                 c.name as contractor_name
             FROM potholes p
             LEFT JOIN contractors c ON c.id = p.contractor_id
-            WHERE {where_clause}
+            WHERE {where_clause} AND p.avg_lat IS NOT NULL AND p.avg_lon IS NOT NULL AND p.pothole_type IS NOT NULL
             ORDER BY p.created_at DESC
             LIMIT :limit OFFSET :offset
         """),
